@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#
+# google-chrome-ssb
+
+[ "${DEBUG}" = "Y" ] && set -x
+
+readonly CAT="$(which cat 2> /dev/null)"
+readonly CHMOD="$(which chmod 2> /dev/null)"
+readonly CP="$(which cp 2> /dev/null)"
+readonly ECHO="$(which echo 2> /dev/null)"
+readonly HEAD="$(which head 2> /dev/null)"
+readonly LN="$(which ln 2> /dev/null)"
+readonly MDFIND="$(which mdfind 2> /dev/null)"
+readonly MKDIR="$(which mkdir 2> /dev/null)"
+readonly PWD="$(which pwd 2> /dev/null)"
+readonly RM="$(which rm 2> /dev/null)"
+readonly SIPS="$(which sips 2> /dev/null)"
+readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
+
+[ -x "${CAT}" ] || exit 1
+[ -x "${CHMOD}" ] || exit 1
+[ -x "${CP}" ] || exit 1
+[ -x "${ECHO}" ] || exit 1
+[ -x "${HEAD}" ] || exit 1
+[ -x "${LN}" ] || exit 1
+[ -x "${MDFIND}" ] || exit 1
+[ -x "${MKDIR}" ] || exit 1
+[ -x "${PWD}" ] || exit 1
+[ -x "${RM}" ] || exit 1
+[ -x "${SIPS}" ] || exit 1
+[ -x "${TIFF2ICNS}" ] || exit 1
+
+_GOOGLE_CHROME="/Applications/Google Chrome.app"
+_ROOT="$(${PWD})"
+
+##############################
+# trim spaces
+#
+# Arguments:
+#   One string
+# Returns:
+#   One string
+##############################
+
+__trim() {
+  local mylocalvar="${1}"
+  mylocalvar="${mylocalvar#"${mylocalvar%%[![:space:]]*}"}"
+  mylocalvar="${mylocalvar%"${mylocalvar##*[![:space:]]}"}"
+  ${ECHO} -n "${mylocalvar}"
+}
+
+##############################
+# main()
+#
+# Arguments:
+#   None
+# Returns:
+#   None
+##############################
+
+main() {
+
+${ECHO} -n " How the application should be called ? "
+read myvar
+myapp_name="$(__trim "${myvar}")"
+unset myvar
+[ -n "${myapp_name}" ]|| { ${ECHO} " *** ERROR *** no App name"; exit 1; }
+
+${ECHO} -n " What's the URL (e.g.: https://www.google.com) ? "
+read myvar
+myapp_url="$(__trim "${myvar}")"
+unset myvar
+[ -n "${myapp_url}" ]|| { ${ECHO} " *** ERROR *** no App URL"; exit 1; }
+
+${ECHO} -n " What's the full path to the icon (e.g.: /tmp/icon.png) ? "
+read myvar
+myapp_icon="$(__trim "${myvar}")"
+unset myvar
+[ -n "${myapp_icon}" ]|| { ${ECHO} " *** ERROR *** no App icon"; exit 1; }
+
+if [ ! -d "${_GOOGLE_CHROME}" ]; then
+  _GOOGLE_CHROME="$(${MDFIND} "kMDItemCFBundleIdentifier == 'com.google.Chrome'"|${HEAD} -n 1)"
+  if [ -z "${_GOOGLE_CHROME}" ]; then
+    ${ECHO} " *** ERROR *** where is Google Chrome installed ?!?!"
+    exit 1
+  fi
+fi
+
+${RM} -f -r "${_ROOT}/${myapp_name}.app" # TODO : make a simple check
+
+${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/MacOS"
+${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources"
+${LN} -s "${_GOOGLE_CHROME}/Contents/MacOS/Google Chrome" "${_ROOT}/${myapp_name}.app/Contents/MacOS/Google Chrome SSB"
+${LN} -s "${_GOOGLE_CHROME}/Contents/Versions" "${_ROOT}/${myapp_name}.app/Contents/Versions"
+
+if [ -f "${myapp_icon}" ]; then
+  if [ "${myapp_icon##*.}" = "icns" ]; then
+    ${CP} "${myapp_icon}" "${_ROOT}/${myapp_name}.app/Contents/Resources/${myapp_name}.icns"
+  else
+    ${SIPS} \
+    --resampleWidth 128 \
+    --setProperty format tiff \
+    "${myapp_icon}" \
+    --out "${_ROOT}/${myapp_name}.app/Contents/Resources/${myapp_name}.tiff" 1> /dev/null 2> /dev/null
+    ${TIFF2ICNS} \
+    -noLarge \
+    "${_ROOT}/${myapp_name}.app/Contents/Resources/${myapp_name}.tiff" \
+    "${_ROOT}/${myapp_name}.app/Contents/Resources/${myapp_name}.icns" 1> /dev/null 2> /dev/null
+  fi
+fi
+
+${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Info.plist" << EOT
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" “http://www.apple.com/DTDs/PropertyList-1.0.dtd”>
+<plist version=”1.0″>
+<dict>
+<key>CFBundleExecutable</key>
+<string>${myapp_name}</string>
+<key>CFBundleIconFile</key>
+<string>${myapp_name}.icns</string>
+<key>CFBundleIdentifier</key>
+<string>com.google.Chrome.${myapp_name}</string>
+<key>CFBundleName</key>
+<string>${myapp_name}</string>
+<key>CFBundleShortVersionString</key>
+<string>1.0</string>
+<key>KSProductID</key>
+<string>com.google.Chrome.${myapp_name}</string>
+<key>NSHighResolutionCapable</key>
+<string>True</string>
+</dict>
+</plist>
+EOT
+
+${CAT} > "${_ROOT}/${myapp_name}.app/Contents/MacOS/${myapp_name}" << EOT
+#!/bin/bash
+ABSPATH=\$(cd "\$(dirname "\${0}")"; pwd)
+PROFILEPATH="\${HOME}/Library/Application Support/Google Chrome SSB/${myapp_name}"
+exec "\${ABSPATH}/Google Chrome SSB" \
+--app="${myapp_url}" \\
+--disable-default-apps \\
+--disable-extensions \\
+--disable-new-profile-management \\
+--disable-password-generation \\
+--no-first-run \\
+--user-data-dir="\${PROFILEPATH}" "\${*}"
+EOT
+
+${CHMOD} 0755 "${_ROOT}/${myapp_name}.app/Contents/MacOS/${myapp_name}"
+
+${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources/en.lproj"
+${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Resources/en.lproj/InfoPlist.strings" << EOT
+CFBundleDisplayName = "${myapp_name}";
+CFBundleName = "${myapp_name}";
+EOT
+
+${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources/es.lproj"
+${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Resources/es.lproj/InfoPlist.strings" << EOT
+CFBundleDisplayName = "${myapp_name}";
+CFBundleName = "${myapp_name}";
+EOT
+
+${CAT} << EOT
+ App has been installed in ${_ROOT}/${myapp_name}.app
+EOT
+
+}
+
+main "${@}"
