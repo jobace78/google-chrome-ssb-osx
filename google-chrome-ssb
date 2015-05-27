@@ -14,7 +14,6 @@ readonly MDFIND="$(which mdfind 2> /dev/null)"
 readonly MKDIR="$(which mkdir 2> /dev/null)"
 readonly PRINTF="$(which printf 2> /dev/null)"
 readonly PWD="$(which pwd 2> /dev/null)"
-readonly READ="$(which read 2> /dev/null)"
 readonly RM="$(which rm 2> /dev/null)"
 readonly SIPS="$(which sips 2> /dev/null)"
 readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
@@ -29,7 +28,6 @@ readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
 [ -x "${MKDIR}" ] || exit 1
 [ -x "${PRINTF}" ] || exit 1
 [ -x "${PWD}" ] || exit 1
-[ -x "${READ}" ] || exit 1
 [ -x "${RM}" ] || exit 1
 [ -x "${SIPS}" ] || exit 1
 [ -x "${TIFF2ICNS}" ] || exit 1
@@ -106,22 +104,22 @@ fi
 
 ## get app name
 ${ECHO} -n " > How the application should be called? [Google] "
-${READ} myapp_name_input
+read myapp_name_input
 myapp_name="$(__trim "${myapp_name_input}")"
 
 ## get app url
 ${ECHO} -n " > What's the URL? [https://google.com] "
-${READ} myapp_url_input
+read myapp_url_input
 myapp_url="$(__trim "${myapp_url_input}")"
 
 ## get app icon
 ${ECHO} -n " > What's the full path to the icon? [/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns] "
-${READ} myapp_icon_input
+read myapp_icon_input
 myapp_icon="$(__trim "${myapp_icon_input}")"
 
 ## get app language
 ${ECHO} -n " > What's the language code you want to use? [en] "
-${READ} myapp_language_input
+read myapp_language_input
 myapp_language="$(__trim "${myapp_language_input}")"
 
 ## defaults
