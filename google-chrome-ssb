@@ -12,7 +12,9 @@ readonly HEAD="$(which head 2> /dev/null)"
 readonly LN="$(which ln 2> /dev/null)"
 readonly MDFIND="$(which mdfind 2> /dev/null)"
 readonly MKDIR="$(which mkdir 2> /dev/null)"
+readonly PRINTF="$(which printf 2> /dev/null)"
 readonly PWD="$(which pwd 2> /dev/null)"
+readonly READ="$(which read 2> /dev/null)"
 readonly RM="$(which rm 2> /dev/null)"
 readonly SIPS="$(which sips 2> /dev/null)"
 readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
@@ -25,7 +27,9 @@ readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
 [ -x "${LN}" ] || exit 1
 [ -x "${MDFIND}" ] || exit 1
 [ -x "${MKDIR}" ] || exit 1
+[ -x "${PRINTF}" ] || exit 1
 [ -x "${PWD}" ] || exit 1
+[ -x "${READ}" ] || exit 1
 [ -x "${RM}" ] || exit 1
 [ -x "${SIPS}" ] || exit 1
 [ -x "${TIFF2ICNS}" ] || exit 1
@@ -34,19 +38,51 @@ _GOOGLE_CHROME="/Applications/Google Chrome.app"
 _ROOT="$(${PWD})"
 
 ##############################
-# trim spaces
+# __lproj()
 #
 # Arguments:
-#   One string
+#   1: name (string)
+#   2: language (string)
 # Returns:
-#   One string
+#   Nothing
 ##############################
+__lproj() {
 
+  local l_myapp_name="${1}"
+  local l_myapp_language="${2}"
+
+  local l_language_code=""
+
+  l_language_code="$(${PRINTF} "%s\n" "${l_myapp_language//[!a-z]/}")"
+
+  if [[ "${#l_language_code}" -eq 2 ]]; then
+    ${MKDIR} "${_ROOT}/${l_myapp_name}.app/Contents/Resources/${l_language_code}.lproj" || return 1
+    ${CAT} > "${_ROOT}/${l_myapp_name}.app/Contents/Resources/${l_language_code}.lproj/InfoPlist.strings" << EOT
+CFBundleDisplayName = "${l_myapp_name}";
+CFBundleName = "${l_myapp_name}";
+EOT
+  else
+    return 1
+  fi
+
+}
+
+##############################
+# __trim()
+#
+# Arguments:
+#   1: name (string)
+# Returns:
+#   1: name (string)
+##############################
 __trim() {
-  local mylocalvar="${1}"
-  mylocalvar="${mylocalvar#"${mylocalvar%%[![:space:]]*}"}"
-  mylocalvar="${mylocalvar%"${mylocalvar##*[![:space:]]}"}"
-  ${ECHO} -n "${mylocalvar}"
+
+  local l_var="${1}"
+
+  l_var="${l_var#"${l_var%%[![:space:]]*}"}"
+  l_var="${l_var%"${l_var##*[![:space:]]}"}"
+  ${ECHO} -n "${l_var}"
+
 }
 
 ##############################
@@ -57,42 +93,56 @@ __trim() {
 # Returns:
 #   None
 ##############################
-
 main() {
 
-${ECHO} -n " How the application should be called ? "
-read myvar
-myapp_name="$(__trim "${myvar}")"
-unset myvar
-[ -n "${myapp_name}" ]|| { ${ECHO} " *** ERROR *** no App name"; exit 1; }
-
-${ECHO} -n " What's the URL (e.g.: https://www.google.com) ? "
-read myvar
-myapp_url="$(__trim "${myvar}")"
-unset myvar
-[ -n "${myapp_url}" ]|| { ${ECHO} " *** ERROR *** no App URL"; exit 1; }
-
-${ECHO} -n " What's the full path to the icon (e.g.: /tmp/icon.png) ? "
-read myvar
-myapp_icon="$(__trim "${myvar}")"
-unset myvar
-[ -n "${myapp_icon}" ]|| { ${ECHO} " *** ERROR *** no App icon"; exit 1; }
-
+## find chrome, if it's not in the standard path, try to find it using spotlight
 if [ ! -d "${_GOOGLE_CHROME}" ]; then
   _GOOGLE_CHROME="$(${MDFIND} "kMDItemCFBundleIdentifier == 'com.google.Chrome'"|${HEAD} -n 1)"
   if [ -z "${_GOOGLE_CHROME}" ]; then
-    ${ECHO} " *** ERROR *** where is Google Chrome installed ?!?!"
+    ${ECHO} " *** ERROR *** Where is Google Chrome installed ?!?!"
     exit 1
   fi
 fi
 
-${RM} -f -r "${_ROOT}/${myapp_name}.app" # TODO : make a simple check
+## get app name
+${ECHO} -n " > How the application should be called? [Google] "
+${READ} myapp_name_input
+myapp_name="$(__trim "${myapp_name_input}")"
 
+## get app url
+${ECHO} -n " > What's the URL? [https://google.com] "
+${READ} myapp_url_input
+myapp_url="$(__trim "${myapp_url_input}")"
+
+## get app icon
+${ECHO} -n " > What's the full path to the icon? [/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns] "
+${READ} myapp_icon_input
+myapp_icon="$(__trim "${myapp_icon_input}")"
+
+## get app language
+${ECHO} -n " > What's the language code you want to use? [en] "
+${READ} myapp_language_input
+myapp_language="$(__trim "${myapp_language_input}")"
+
+## defaults
+[ -n "${myapp_name}" ] || myapp_name="Google"
+[ -n "${myapp_url}" ] || myapp_url="https://google.com"
+[ -n "${myapp_icon}" ] || myapp_icon="/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns"
+[ -n "${myapp_language}" ] || myapp_language="en"
+
+## check if app already exists
+if [ -d "${_ROOT}/${myapp_name}.app" ]; then
+  ${ECHO} "${_ROOT}/${myapp_name}.app already exists, exiting..."
+  exit 1
+fi
+
+## init
 ${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/MacOS"
 ${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources"
 ${LN} -s "${_GOOGLE_CHROME}/Contents/MacOS/Google Chrome" "${_ROOT}/${myapp_name}.app/Contents/MacOS/Google Chrome SSB"
 ${LN} -s "${_GOOGLE_CHROME}/Contents/Versions" "${_ROOT}/${myapp_name}.app/Contents/Versions"
 
+## convert icon if necessary
 if [ -f "${myapp_icon}" ]; then
   if [ "${myapp_icon##*.}" = "icns" ]; then
     ${CP} "${myapp_icon}" "${_ROOT}/${myapp_name}.app/Contents/Resources/${myapp_name}.icns"
@@ -109,29 +159,31 @@ if [ -f "${myapp_icon}" ]; then
   fi
 fi
 
+## create the Info.plist
 ${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Info.plist" << EOT
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" “http://www.apple.com/DTDs/PropertyList-1.0.dtd”>
-<plist version=”1.0″>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
 <dict>
-<key>CFBundleExecutable</key>
-<string>${myapp_name}</string>
-<key>CFBundleIconFile</key>
-<string>${myapp_name}.icns</string>
-<key>CFBundleIdentifier</key>
-<string>com.google.Chrome.${myapp_name}</string>
-<key>CFBundleName</key>
-<string>${myapp_name}</string>
-<key>CFBundleShortVersionString</key>
-<string>1.0</string>
-<key>KSProductID</key>
-<string>com.google.Chrome.${myapp_name}</string>
-<key>NSHighResolutionCapable</key>
-<string>True</string>
+  <key>CFBundleExecutable</key>
+  <string>${myapp_name}</string>
+  <key>CFBundleIconFile</key>
+  <string>${myapp_name}.icns</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.google.Chrome.${myapp_name}</string>
+  <key>CFBundleName</key>
+  <string>${myapp_name}</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>KSProductID</key>
+  <string>com.google.Chrome.${myapp_name}</string>
+  <key>NSHighResolutionCapable</key>
+  <string>True</string>
 </dict>
 </plist>
 EOT
 
+## create the wrapper script
 ${CAT} > "${_ROOT}/${myapp_name}.app/Contents/MacOS/${myapp_name}" << EOT
 #!/bin/bash
 ABSPATH=\$(cd "\$(dirname "\${0}")"; pwd)
@@ -145,23 +197,17 @@ exec "\${ABSPATH}/Google Chrome SSB" \
 --no-first-run \\
 --user-data-dir="\${PROFILEPATH}" "\${*}"
 EOT
-
 ${CHMOD} 0755 "${_ROOT}/${myapp_name}.app/Contents/MacOS/${myapp_name}"
 
-${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources/en.lproj"
-${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Resources/en.lproj/InfoPlist.strings" << EOT
-CFBundleDisplayName = "${myapp_name}";
-CFBundleName = "${myapp_name}";
-EOT
+## create localization(s)
+__lproj "${myapp_name}" "en"
+if [ "${myapp_language}" != "en" ]; then
+  __lproj "${myapp_name}" "${myapp_language}"
+fi
 
-${MKDIR} -p "${_ROOT}/${myapp_name}.app/Contents/Resources/es.lproj"
-${CAT} > "${_ROOT}/${myapp_name}.app/Contents/Resources/es.lproj/InfoPlist.strings" << EOT
-CFBundleDisplayName = "${myapp_name}";
-CFBundleName = "${myapp_name}";
-EOT
-
+## finish !!!
 ${CAT} << EOT
- App has been installed in ${_ROOT}/${myapp_name}.app
+ App has been created in ${_ROOT}/${myapp_name}.app
 EOT
 
 }

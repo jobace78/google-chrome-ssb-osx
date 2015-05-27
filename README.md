@@ -13,9 +13,9 @@ Each created SSB has his own profile in `${HOME}/Library/Application Support/Goo
 
 ## TODO
 
-* Add comments
+* <strike>Add comments</strike>
 * Error handling
-* i18n support
+* <strike>i18n support</strike>
 
 ## License
 
