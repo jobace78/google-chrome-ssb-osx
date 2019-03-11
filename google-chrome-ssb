@@ -4,19 +4,19 @@
 
 [ "${DEBUG}" = "Y" ] && set -x
 
-readonly CAT="$(which cat 2> /dev/null)"
-readonly CHMOD="$(which chmod 2> /dev/null)"
-readonly CP="$(which cp 2> /dev/null)"
-readonly ECHO="$(which echo 2> /dev/null)"
-readonly HEAD="$(which head 2> /dev/null)"
-readonly LN="$(which ln 2> /dev/null)"
-readonly MDFIND="$(which mdfind 2> /dev/null)"
-readonly MKDIR="$(which mkdir 2> /dev/null)"
-readonly PRINTF="$(which printf 2> /dev/null)"
-readonly PWD="$(which pwd 2> /dev/null)"
-readonly RM="$(which rm 2> /dev/null)"
-readonly SIPS="$(which sips 2> /dev/null)"
-readonly TIFF2ICNS="$(which tiff2icns 2> /dev/null)"
+readonly CAT="$(command -v cat 2> /dev/null)"
+readonly CHMOD="$(command -v chmod 2> /dev/null)"
+readonly CP="$(command -v cp 2> /dev/null)"
+readonly ECHO="$(command -v echo 2> /dev/null)"
+readonly HEAD="$(command -v head 2> /dev/null)"
+readonly LN="$(command -v ln 2> /dev/null)"
+readonly MDFIND="$(command -v mdfind 2> /dev/null)"
+readonly MKDIR="$(command -v mkdir 2> /dev/null)"
+readonly PRINTF="$(command -v printf 2> /dev/null)"
+readonly PWD="$(command -v pwd 2> /dev/null)"
+readonly RM="$(command -v rm 2> /dev/null)"
+readonly SIPS="$(command -v sips 2> /dev/null)"
+readonly TIFF2ICNS="$(command -v tiff2icns 2> /dev/null)"
 
 [ -x "${CAT}" ] || exit 1
 [ -x "${CHMOD}" ] || exit 1
@@ -104,21 +104,25 @@ fi
 
 ## get app name
 ${ECHO} -n " > How the application should be called? [Google] "
+# shellcheck disable=SC2162
 read myapp_name_input
 myapp_name="$(__trim "${myapp_name_input}")"
 
 ## get app url
 ${ECHO} -n " > What's the URL? [https://google.com] "
+# shellcheck disable=SC2162
 read myapp_url_input
 myapp_url="$(__trim "${myapp_url_input}")"
 
 ## get app icon
 ${ECHO} -n " > What's the full path to the icon? [/System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/GenericApplicationIcon.icns] "
+# shellcheck disable=SC2162
 read myapp_icon_input
 myapp_icon="$(__trim "${myapp_icon_input}")"
 
 ## get app language
 ${ECHO} -n " > What's the language code you want to use? [en] "
+# shellcheck disable=SC2162
 read myapp_language_input
 myapp_language="$(__trim "${myapp_language_input}")"
 
